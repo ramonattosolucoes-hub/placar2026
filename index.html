@@ -75,6 +75,7 @@
   .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink-3); flex: none; }
   .live[data-state="ok"] .dot { background: var(--good); box-shadow: 0 0 0 0 var(--good-soft); animation: pulse 2s infinite; }
   .live[data-state="err"] .dot { background: var(--bad); }
+  .live[data-state="warn"] .dot { background: var(--warn); }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--good-soft); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
   @media (prefers-reduced-motion: reduce) { .live .dot { animation: none !important; } }
 
@@ -341,7 +342,19 @@
 <script>
 (() => {
   'use strict';
-  const URL_TSE = 'https://resultados.tse.jus.br/oficial/ele2026/6257/dados/br/br-c0001-e006257-u.json';
+  const BASE = 'https://resultados.tse.jus.br/oficial/ele2026/6257';
+  // O TSE publica dois arquivos nacionais; o simplificado costuma sair antes. A página lê os dois e usa o mais novo.
+  const URLS_BR = [
+    BASE + '/dados-simplificados/br/br-c0001-e006257-r.json',
+    BASE + '/dados/br/br-c0001-e006257-u.json'
+  ];
+  const ANTIGO_MS = 5 * 60000; // sem boletim novo há mais que isso: avisa
+  function buscar(url, ms = 15000) {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+    return fetch(url + (url.includes('?') ? '&' : '?') + '_=' + Date.now(), { cache: 'no-store', signal: ctl.signal })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .finally(() => clearTimeout(t));
+  }
   const INTERVALO = 30000;
   const DOC_PATH = 'serie/presidente-1t';
   const LS_KEY = 'placar-1t-serie';
@@ -392,46 +405,57 @@
     return Date.parse(`${m[3]}-${m[2]}-${m[1]}T${h[1]}:${h[2]}:${h[3]}-03:00`);
   }
   function parsear(raw) {
-    const cargos = raw.carg || [];
-    const carg = cargos.find(c => Number(c.cd) === 1) || cargos[0] || {};
     const cands = [];
-    for (const agr of carg.agr || []) for (const par of agr.par || []) for (const c of par.cand || []) {
-      cands.push({ n: String(c.n || ''), nome: c.nmu || c.nm || '', votos: num(c.vap), pvap: pct(c.pvap), e: c.e === 's', st: c.st || '' });
+    const addCand = c => cands.push({ n: String(c.n || ''), nome: c.nmu || c.nm || '', votos: num(c.vap), pvap: pct(c.pvap), e: c.e === 's', st: c.st || '' });
+    if (Array.isArray(raw.cand)) {
+      raw.cand.forEach(addCand);
+    } else {
+      const cargos = raw.carg || [];
+      const carg = cargos.find(c => Number(c.cd) === 1) || cargos[0] || {};
+      for (const agr of carg.agr || []) for (const par of agr.par || []) for (const c of par.cand || []) addCand(c);
     }
     cands.sort((a, b) => b.votos - a.votos);
     const acha = (numero, re) => cands.find(c => c.n === numero) || cands.find(c => re.test(c.nome)) || { n: numero, nome: '', votos: 0, pvap: 0, e: false, st: '' };
     const fl = acha('22', /BOLSONARO/i);
     const lu = acha('13', /LULA/i);
     const s = raw.s || {}, v = raw.v || {};
-    const vv = num(v.vv);
+    // Seções: no arquivo completo ts = total e st = totalizadas; no simplificado tt = total e ts = totalizadas.
+    let secTot, secTotal;
+    if (s.st != null) { secTot = num(s.st); secTotal = num(s.ts); }
+    else if (s.tt != null) { secTot = num(s.ts); secTotal = num(s.tt); }
+    else { secTot = num(s.ts); secTotal = num(s.ts); }
+    const vv = num(v.vv ?? (raw.vv && raw.vv.vv));
+    const vb = num(v.vb ?? (raw.vb && raw.vb.vb));
+    const vn = num(v.tvn ?? v.vn ?? (raw.vn && raw.vn.vn));
     const flp = fl.pvap != null ? fl.pvap : (vv ? fl.votos / vv * 100 : 0);
     const lup = lu.pvap != null ? lu.pvap : (vv ? lu.votos / vv * 100 : 0);
     return {
       t: horaBoletim(raw.dg, raw.hg), k: `${raw.dg || ''} ${raw.hg || ''}`.trim(),
-      pst: pct(s.pst) ?? (num(s.ts) ? num(s.st) / num(s.ts) * 100 : 0),
-      secTot: num(s.st), secTotal: num(s.ts),
-      vv, vb: num(v.vb), vn: num(v.tvn), tv: num(v.tv),
+      pst: pct(s.pst) ?? (secTotal ? secTot / secTotal * 100 : 0),
+      secTot, secTotal,
+      vv, vb, vn, tv: num(v.tv ?? (raw.v && raw.v.tv)),
       final: raw.tf === 's', md: raw.md === 's',
       fl: { ...fl, p: flp }, lu: { ...lu, p: lup }, cands
     };
   }
   async function ler() {
     try {
-      const r = await fetch(URL_TSE, { cache: 'no-store' });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const raw = await r.json();
-      const b = parsear(raw);
+      const res = await Promise.allSettled(URLS_BR.map(u => buscar(u)));
+      const lidos = res.filter(r => r.status === 'fulfilled').map(r => { try { return parsear(r.value); } catch (e) { console.warn('parse', e); return null; } }).filter(b => b && b.k && b.cands.length);
+      if (!lidos.length) { const e = res.find(r => r.status === 'rejected'); throw new Error(e && e.reason && e.reason.name === 'AbortError' ? 'tempo esgotado' : (e && e.reason && e.reason.message) || 'sem dados'); }
+      lidos.sort((a, b) => b.t - a.t);
+      const b = lidos[0];
       ultimo = b;
       const novo = mesclar([{ k: b.k, t: b.t, pst: b.pst, fl: b.fl.votos, lu: b.lu.votos, flp: b.fl.p, lup: b.lu.p }]);
       if (novo) { gravarLocal(); gravarDb(); }
       $('alert').classList.remove('show');
-      $('live').dataset.state = 'ok';
-      $('liveTxt').textContent = `Ao vivo · boletim das ${fmtHoraSeg.format(b.t)} · lido às ${fmtHoraSeg.format(Date.now())}`;
+      ultimaLeitura = Date.now();
+      atualizarStatus();
       render();
     } catch (e) {
       console.warn('TSE', e);
       $('live').dataset.state = 'err';
-      $('liveTxt').textContent = 'Sem resposta do TSE neste momento. Tentando de novo em 30 s.';
+      $('liveTxt').textContent = `Sem resposta do TSE neste momento (${e.message}). Tentando de novo em 30 s.`;
       const a = $('alert');
       a.textContent = ultimo
         ? `A última leitura falhou (${e.message}). Os números abaixo são do boletim das ${fmtHoraSeg.format(ultimo.t)}.`
@@ -448,9 +472,7 @@
     if (projetando) return; projetando = true;
     try {
       const res = await Promise.allSettled(UFS.map(uf =>
-        fetch(`https://resultados.tse.jus.br/oficial/ele2026/6257/dados/${uf}/${uf}-c0001-e006257-u.json`, { cache: 'no-store' })
-          .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-          .then(j => ({ uf, b: parsear(j) }))));
+        buscar(`${BASE}/dados/${uf}/${uf}-c0001-e006257-u.json`).then(j => ({ uf, b: parsear(j) }))));
       const ufs = res.filter(r => r.status === 'fulfilled').map(r => r.value);
       const falhas = res.length - ufs.length;
       if (!ufs.length) throw new Error('nenhum estado respondeu');
@@ -528,6 +550,23 @@
         : `<tr><td>${l.uf}</td><td class="num">0%</td><td class="skeleton" colspan="3">ainda sem urna apurada (usa a média nacional)</td><td class="num">${fmtInt.format(Math.round(l.pvv))}</td></tr>`;
     }).join('');
   }
+
+  // ---------- status (idade do boletim) ----------
+  let ultimaLeitura = 0;
+  function idade(ms) { const m = Math.floor(ms / 60000), sg = Math.floor(ms / 1000) % 60; return m ? `${m} min` : `${sg} s`; }
+  function atualizarStatus() {
+    if (!ultimo || !ultimaLeitura) return;
+    const live = $('live'); if (live.dataset.state === 'err') return;
+    const semNovo = Date.now() - ultimo.t;
+    if (semNovo > ANTIGO_MS && !ultimo.final) {
+      live.dataset.state = 'warn';
+      $('liveTxt').textContent = `O TSE não publica boletim novo há ${idade(semNovo)} (último: ${fmtHoraSeg.format(ultimo.t)}). A página continua tentando a cada 30 s; última tentativa às ${fmtHoraSeg.format(ultimaLeitura)}.`;
+    } else {
+      live.dataset.state = 'ok';
+      $('liveTxt').textContent = `Ao vivo · boletim das ${fmtHoraSeg.format(ultimo.t)} (há ${idade(semNovo)}) · lido às ${fmtHoraSeg.format(ultimaLeitura)}`;
+    }
+  }
+  setInterval(atualizarStatus, 1000);
 
   // ---------- render ----------
   function render() {
