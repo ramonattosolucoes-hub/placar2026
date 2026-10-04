@@ -166,6 +166,43 @@
   .range .ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); }
   .proj h3 { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.3; font-stretch: 94%; text-wrap: balance; }
   .proj p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 64ch; }
+
+  /* Progresso */
+  .progress { display: grid; gap: 6px; padding: 2px 2px 0; }
+  .progress .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); }
+  .progress .track { height: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+  .progress .track i { display: block; height: 100%; width: 0; background: var(--ink-2); transition: width .6s ease; }
+
+  /* Resposta */
+  .answer { display: grid; gap: 10px; }
+  .answer h2 { margin: 0; font-size: clamp(22px, 5.5vw, 30px); font-weight: 700; line-height: 1.2; letter-spacing: -.015em; text-wrap: balance; font-stretch: 94%; }
+  .answer p { margin: 0; color: var(--ink-2); font-size: 15px; max-width: 62ch; }
+  .projline { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 2px; }
+  .projline b { font-weight: 600; font-size: 15px; }
+  .projline span.sub { font-size: 13px; color: var(--ink-3); }
+
+  /* Placar */
+  .score { display: grid; grid-template-columns: 1fr auto 1fr; grid-template-areas: "fl mid lu" "others others others"; gap: 10px 18px; align-items: start; }
+  .score .side { min-width: 0; display: grid; gap: 2px; }
+  .score .side.lu { text-align: right; }
+  .score .side .name { font-size: 16px; font-weight: 700; font-stretch: 92%; }
+  .score .side .n { font-size: 11.5px; font-weight: 600; color: var(--ink-3); letter-spacing: .05em; }
+  .score .side .pct { font-size: clamp(34px, 8vw, 48px); font-weight: 600; letter-spacing: -.02em; line-height: 1.05; margin-top: 4px; }
+  .score .side.fl .pct { color: var(--fl); } .score .side.lu .pct { color: var(--lu); }
+  .score .side .votes { font-size: 13px; color: var(--ink-2); }
+  .score .side .bar { margin-top: 8px; }
+  .score .side.lu .bar i { left: auto; right: 0; }
+  .score .side.fl .bar i { background: var(--fl); } .score .side.lu .bar i { background: var(--lu); }
+  .score .mid { grid-area: mid; text-align: center; display: grid; gap: 2px; align-self: center; padding: 8px 10px; background: var(--surface-2); border-radius: 8px; min-width: 120px; }
+  .score .mid .difv { font-size: 18px; font-weight: 600; }
+  .score .mid .difv.fl { color: var(--fl); } .score .mid .difv.lu { color: var(--lu); }
+  .score .mid .difp { font-size: 12.5px; color: var(--ink-2); }
+  .score .others { grid-area: others; }
+  @media (max-width: 560px) {
+    .score { grid-template-columns: 1fr 1fr; grid-template-areas: "fl lu" "mid mid" "others others"; gap: 10px 12px; }
+    .score .mid { min-width: 0; }
+  }
+  .vs-note { font-size: 12.5px; color: var(--ink-3); }
   [hidden] { display: none !important; }
 
   .note { font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
@@ -185,79 +222,46 @@
 
   <div class="alert" id="alert" role="status"></div>
 
-  <section class="panel hero" aria-live="polite">
-    <span class="label">Diferença agora</span>
-    <div class="big num" id="difBig">—</div>
-    <div class="sub" id="difSub">Assim que o TSE publicar o próximo boletim, a diferença em votos e em pontos percentuais aparece aqui.</div>
-  </section>
-
-  <div class="cands">
-    <section class="panel cand fl">
-      <div class="name"><span>Flávio Bolsonaro</span><span class="n">22 · PL</span></div>
-      <div class="pct num" id="flPct">—<small>dos válidos</small></div>
-      <div class="votes num" id="flVotes">—</div>
-      <div class="bar"><i id="flBar"></i><span class="half" title="50%"></span></div>
-    </section>
-    <section class="panel cand lu">
-      <div class="name"><span>Lula</span><span class="n">13 · PT</span></div>
-      <div class="pct num" id="luPct">—<small>dos válidos</small></div>
-      <div class="votes num" id="luVotes">—</div>
-      <div class="bar"><i id="luBar"></i><span class="half" title="50%"></span></div>
-    </section>
+  <div class="progress">
+    <div class="row"><span>Urnas apuradas no país</span><span class="num" id="pstTxt">0%</span></div>
+    <div class="track"><i id="pstBar"></i></div>
   </div>
-  <div class="others" id="others"></div>
 
-  <section class="panel verdict">
-    <span class="label">Resultado do 1º turno</span>
+  <section class="panel answer" aria-live="polite">
     <span class="pill neutral" id="vPill">Aguardando boletim</span>
     <h2 id="vTitle">Ainda sem números</h2>
     <p id="vText">Vence no 1º turno quem passa de 50% dos votos válidos (brancos e nulos não contam). Se ninguém passar, há 2º turno em 25 de outubro.</p>
-    <div class="meter">
-      <div class="row"><span>Seções totalizadas</span><span class="num" id="pstTxt">0%</span></div>
-      <div class="track"><i id="pstBar"></i></div>
-    </div>
-    <div class="facts">
-      <div><span class="label">Linha dos 50%</span><div class="v num" id="f50">—</div></div>
-      <div><span class="label">Votos válidos</span><div class="v num" id="fVV">—</div></div>
-      <div><span class="label">Brancos + nulos</span><div class="v num" id="fBN">—</div></div>
-      <div><span class="label">Boletim do TSE</span><div class="v num" id="fHora">—</div></div>
+    <div class="projline" id="aProj" hidden>
+      <span class="label">Projeção pela tendência de cada estado</span>
+      <b id="aProjTitle">—</b>
+      <span class="sub" id="aProjSub"></span>
     </div>
   </section>
 
-  <section class="panel proj">
-    <span class="label">Projeção pelo que já foi apurado em cada estado</span>
-    <span class="pill neutral" id="pPill">Calculando…</span>
-    <h3 id="pTitle">Lendo os boletins dos 27 estados e do exterior</h3>
-    <p id="pText">A conta pega o que cada estado já apurou, estica para o total de seções daquele estado e soma tudo. Isso corrige o viés de alguns estados chegarem antes dos outros.</p>
-    <div class="proj-grid">
-      <div class="proj-box"><span class="label">Flávio Bolsonaro · projeção</span><div class="v num fl" id="pFl">—</div><div class="d" id="pFlD"></div></div>
-      <div class="proj-box"><span class="label">Lula · projeção</span><div class="v num lu" id="pLu">—</div><div class="d" id="pLuD"></div></div>
+  <section class="panel score" aria-label="Placar">
+    <div class="side fl">
+      <div class="name">Flávio Bolsonaro</div><div class="n">22 · PL</div>
+      <div class="pct num" id="flPct">—</div>
+      <div class="votes num" id="flVotes">—</div>
+      <div class="bar"><i id="flBar"></i><span class="half" title="50%"></span></div>
     </div>
-    <div class="range">
-      <div class="row" style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink-2)"><span>Flávio nos votos válidos: projeção (ponto) e faixa de incerteza</span><span class="num" id="pFaixa">—</span></div>
-      <div class="track"><span class="band" id="pBand"></span><span class="mk50" title="50%"></span><span class="cur" id="pCur" style="left:50%"></span></div>
-      <div class="ticks num"><span>40%</span><span>45%</span><span>50%</span><span>55%</span><span>60%</span></div>
+    <div class="mid">
+      <span class="label">Diferença</span>
+      <div class="difv num" id="difBig">—</div>
+      <div class="difp" id="difSub">aguardando</div>
     </div>
-    <div class="facts">
-      <div><span class="label">Precisa nos votos que faltam</span><div class="v num" id="pNeed">—</div></div>
-      <div><span class="label">Está fazendo até agora</span><div class="v num" id="pNow">—</div></div>
-      <div><span class="label">Estados sem urna apurada</span><div class="v num" id="pSem">—</div></div>
-      <div><span class="label">Última conta</span><div class="v num" id="pHora">—</div></div>
+    <div class="side lu">
+      <div class="name">Lula</div><div class="n">13 · PT</div>
+      <div class="pct num" id="luPct">—</div>
+      <div class="votes num" id="luVotes">—</div>
+      <div class="bar"><i id="luBar"></i><span class="half" title="50%"></span></div>
     </div>
-    <details>
-      <summary>Estado por estado <span class="num" id="pCount"></span></summary>
-      <div class="tbl">
-        <table>
-          <thead><tr><th>UF</th><th>Seções</th><th>Flávio</th><th>Lula</th><th>Dif. (p.p.)</th><th>Válidos projetados</th></tr></thead>
-          <tbody id="pBody"></tbody>
-        </table>
-      </div>
-    </details>
+    <div class="others" id="others">Percentuais sobre votos válidos. O risco na barra marca os 50%.</div>
   </section>
 
   <section class="panel">
     <div class="chart-head">
-      <h2>Evolução da diferença</h2>
+      <h2>Como a diferença evoluiu</h2>
       <div class="seg" role="group" aria-label="Unidade do gráfico">
         <button type="button" id="uVotos" aria-pressed="true">Votos</button>
         <button type="button" id="uPP" aria-pressed="false">Pontos percentuais</button>
@@ -265,13 +269,58 @@
     </div>
     <div class="chart-wrap" id="chartWrap">
       <svg id="chart" viewBox="0 0 800 300" role="img" aria-label="Diferença de votos entre Flávio Bolsonaro e Lula ao longo da apuração"></svg>
-      <div class="empty" id="chartEmpty">A linha começa a ser desenhada com o primeiro boletim lido por esta página e cresce a cada atualização.</div>
+      <div class="empty" id="chartEmpty">A linha começa com o primeiro boletim lido por esta página e cresce a cada atualização.</div>
       <div class="tip" id="tip"></div>
     </div>
     <div class="legend">
-      <span style="--sw: var(--fl)">Acima de zero: vantagem de Flávio Bolsonaro</span>
-      <span style="--sw: var(--lu)">Abaixo de zero: vantagem de Lula</span>
+      <span style="--sw: var(--fl)">Acima de zero: Flávio na frente</span>
+      <span style="--sw: var(--lu)">Abaixo de zero: Lula na frente</span>
     </div>
+  </section>
+
+  <section class="panel proj">
+    <details>
+      <summary>Entenda a projeção por estado</summary>
+      <div style="display:grid;gap:12px;margin-top:12px">
+        <span class="pill neutral" id="pPill">Calculando…</span>
+        <h3 id="pTitle">Lendo os boletins dos 27 estados e do exterior</h3>
+        <p id="pText">A conta pega o que cada estado já apurou, estica para o total de seções daquele estado e soma tudo. Isso corrige o viés de alguns estados chegarem antes dos outros.</p>
+        <div class="proj-grid">
+          <div class="proj-box"><span class="label">Flávio Bolsonaro · projeção</span><div class="v num fl" id="pFl">—</div><div class="d" id="pFlD"></div></div>
+          <div class="proj-box"><span class="label">Lula · projeção</span><div class="v num lu" id="pLu">—</div><div class="d" id="pLuD"></div></div>
+        </div>
+        <div class="range">
+          <div class="row" style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink-2)"><span>Flávio nos votos válidos: projeção (ponto) e faixa de incerteza</span><span class="num" id="pFaixa">—</span></div>
+          <div class="track"><span class="band" id="pBand"></span><span class="mk50" title="50%"></span><span class="cur" id="pCur" style="left:50%"></span></div>
+          <div class="ticks num"><span>40%</span><span>45%</span><span>50%</span><span>55%</span><span>60%</span></div>
+        </div>
+        <div class="facts">
+          <div><span class="label">Precisa nos votos que faltam</span><div class="v num" id="pNeed">—</div></div>
+          <div><span class="label">Está fazendo até agora</span><div class="v num" id="pNow">—</div></div>
+          <div><span class="label">Estados sem urna apurada</span><div class="v num" id="pSem">—</div></div>
+          <div><span class="label">Última conta</span><div class="v num" id="pHora">—</div></div>
+        </div>
+        <div class="label">Estado por estado <span class="num" id="pCount"></span></div>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>UF</th><th>Seções</th><th>Flávio</th><th>Lula</th><th>Dif. (p.p.)</th><th>Válidos projetados</th></tr></thead>
+            <tbody id="pBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <details>
+      <summary>Números do boletim do TSE</summary>
+      <div class="facts" style="margin-top:12px">
+        <div><span class="label">Linha dos 50%</span><div class="v num" id="f50">—</div></div>
+        <div><span class="label">Votos válidos</span><div class="v num" id="fVV">—</div></div>
+        <div><span class="label">Brancos + nulos</span><div class="v num" id="fBN">—</div></div>
+        <div><span class="label">Horário do boletim</span><div class="v num" id="fHora">—</div></div>
+      </div>
+    </details>
   </section>
 
   <section class="panel">
@@ -454,6 +503,11 @@
     }
     if (p.falhas) texto += ` Atenção: ${p.falhas} estado(s) não responderam nesta leitura, o que enfraquece a conta.`;
     $('pTitle').textContent = titulo; $('pText').textContent = texto;
+    const ap = $('aProj'); ap.hidden = !!definido;
+    $('aProjTitle').textContent = lo > 50 ? `Flávio Bolsonaro no 1º turno (${fmtPct.format(p.pfl)}%, piso ${fmtPct.format(lo)}%)`
+      : hi < 50 ? `2º turno (Flávio com ${fmtPct.format(p.pfl)}%, teto ${fmtPct.format(hi)}%)`
+      : `Ainda em aberto: Flávio com ${fmtPct.format(p.pfl)}%, faixa de ${fmtPct.format(lo)}% a ${fmtPct.format(hi)}%`;
+    $('aProjSub').textContent = lo > 50 || hi < 50 ? 'Pelo que cada estado já apurou; ainda é estimativa. Detalhes em "Entenda a projeção".' : 'A faixa cruza os 50%; ela estreita conforme as urnas entram. Detalhes em "Entenda a projeção".';
     $('pFl').textContent = fmtPct.format(p.pfl) + '%';
     $('pLu').textContent = fmtPct.format(p.plu) + '%';
     $('pFlD').textContent = ultimo ? `${sinal(p.pfl - ultimo.fl.p)}${fmtPP.format(Math.abs(p.pfl - ultimo.fl.p))} p.p. em relação à contagem nacional atual` : '';
@@ -489,22 +543,20 @@
 
     const big = $('difBig');
     big.textContent = fmtInt.format(Math.abs(difV)) + ' votos';
-    big.className = 'big num ' + (difV === 0 ? '' : lider);
-    $('difSub').innerHTML = difV === 0
-      ? 'Empate em votos neste boletim.'
-      : `a favor de <b>${nomeLider}</b> · <b class="num">${fmtPP.format(Math.abs(difP))} p.p.</b> de vantagem nos votos válidos · ${fmtPct.format(b.pst)}% das seções totalizadas`;
+    big.className = 'difv num ' + (difV === 0 ? '' : lider);
+    $('difSub').textContent = difV === 0 ? 'empate neste boletim' : `${fmtPP.format(Math.abs(difP))} p.p. para ${lider === 'fl' ? 'Flávio' : 'Lula'}`;
 
-    $('flPct').innerHTML = `${fmtPct.format(b.fl.p)}%<small>dos válidos</small>`;
-    $('luPct').innerHTML = `${fmtPct.format(b.lu.p)}%<small>dos válidos</small>`;
+    $('flPct').textContent = `${fmtPct.format(b.fl.p)}%`;
+    $('luPct').textContent = `${fmtPct.format(b.lu.p)}%`;
     $('flVotes').textContent = fmtInt.format(b.fl.votos) + ' votos';
     $('luVotes').textContent = fmtInt.format(b.lu.votos) + ' votos';
     $('flBar').style.width = Math.min(100, b.fl.p) + '%';
     $('luBar').style.width = Math.min(100, b.lu.p) + '%';
 
     const outros = b.cands.filter(c => c !== b.fl && c !== b.lu && c.n !== b.fl.n && c.n !== b.lu.n).slice(0, 4);
-    $('others').textContent = outros.length
-      ? 'Demais candidatos: ' + outros.map(c => `${titulo(c.nome)} ${fmtPct.format(c.pvap ?? 0)}%`).join(' · ')
-      : '';
+    $('others').textContent = 'Percentuais sobre votos válidos; o risco na barra marca os 50%.' + (outros.length
+      ? ' Demais candidatos: ' + outros.map(c => `${titulo(c.nome)} ${fmtPct.format(c.pvap ?? 0)}%`).join(' · ') + '.'
+      : '');
 
     // Veredito
     const pill = $('vPill'), title = $('vTitle'), text = $('vText');
@@ -528,16 +580,16 @@
         ? `Com 100% das seções, ${nomeTop} ficou com ${fmtPct.format(top.pvap)}% dos votos válidos.`
         : `Com 100% das seções, ${nomeTop} ficou com ${fmtPct.format(top.pvap)}% dos válidos, abaixo da metade. O 2º turno é em 25 de outubro.`;
     } else {
-      pill.className = 'pill warn'; pill.textContent = `Em apuração · ${fmtPct.format(b.pst)}% das seções`;
+      pill.className = 'pill warn'; pill.textContent = `Ainda em apuração · faltam ${fmtPct.format(Math.max(0, 100 - b.pst))}% das urnas`;
       if (dist > 0) {
-        title.textContent = `Se a proporção se mantiver: ${nomeTop} eleito no 1º turno`;
-        text.textContent = `${nomeTop} está ${fmtPP.format(dist)} p.p. acima da linha dos 50% dos votos válidos. Isso ainda pode mudar: faltam ${fmtPct.format(Math.max(0, 100 - b.pst))}% das seções, e a ordem de chegada dos boletins varia por região. Vale quando o TSE marcar como definido.`;
+        title.textContent = `Por enquanto: ${nomeTop} eleito no 1º turno`;
+        text.textContent = `${nomeTop} tem ${fmtPct.format(top.pvap)}% dos votos válidos, ${fmtPP.format(dist)} p.p. acima da metade. Isso ainda pode virar com as urnas que faltam. Só vale quando o TSE marcar como definido.`;
       } else {
-        title.textContent = `Se a proporção se mantiver: 2º turno entre ${nomeTop} e ${nomeVice}`;
-        text.textContent = `${nomeTop} lidera com ${fmtPct.format(top.pvap)}%, ${fmtPP.format(Math.abs(dist))} p.p. abaixo da linha dos 50% dos votos válidos. Faltam ${fmtPct.format(Math.max(0, 100 - b.pst))}% das seções; o 2º turno seria em 25 de outubro.`;
+        title.textContent = `Por enquanto: 2º turno entre ${nomeTop} e ${nomeVice}`;
+        text.textContent = `${nomeTop} lidera com ${fmtPct.format(top.pvap)}% dos votos válidos, ${fmtPP.format(Math.abs(dist))} p.p. abaixo da metade. Isso ainda pode virar com as urnas que faltam. O 2º turno seria em 25 de outubro.`;
       }
     }
-    $('pstTxt').textContent = `${fmtPct.format(b.pst)}% (${fmtInt.format(b.secTot)} de ${fmtInt.format(b.secTotal)})`;
+    $('pstTxt').textContent = `${fmtPct.format(b.pst)}%`;
     $('pstBar').style.width = Math.min(100, b.pst) + '%';
     $('f50').textContent = `${nomeTop} ${sinal(dist)}${fmtPP.format(Math.abs(dist))} p.p.`;
     $('fVV').textContent = fmtInt.format(b.vv);
